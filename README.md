@@ -11,3 +11,4 @@ Requirements
 * Python 3.4 (not tested on 2.7, but it might work)
 * PyPDF2 1.24
 * Pillow
+* GhostScript
