@@ -62,6 +62,7 @@ instruction_title = re.compile(r'([0-9A-Zchn/ ]{1,}[0-9A-Zchn/]) *(?:—|-) *(.*
 out_pages = []
 out_page_map = {}
 all_insts = []
+page_names = {}
 
 def image_path_for_pdf(pdf_name):
     return os.path.join(derived_dir, pdf_name + "-%d.png")
@@ -161,12 +162,19 @@ for pdf_path in pdf_paths:
 
         out_page_key = (inst['pdf_name'], inst_start_page, inst_end_page)
         if not out_page_key in out_page_map:
+            page_name = "_".join(insts)
+            if page_name in page_names:
+                page_names[page_name] += 1
+                page_name += "_%d" % page_names[page_name]
+            else:
+                page_names[page_name] = 1
+
             out_page_map[out_page_key] = len(out_pages)
             out_pages.append({
                 'key': out_page_key, 
                 'title': inst['inst_joined'], 
                 'description': inst['description'],
-                'name': "_".join(insts)
+                'name': page_name
             })
         page_id = out_page_map[out_page_key] 
 
@@ -177,7 +185,8 @@ for pdf_path in pdf_paths:
                 'start_page': inst_start_page,
                 'end_page': inst_end_page,
                 'description': description,
-                'page_id': page_id
+                'page_id': page_id,
+                'dupe': False
             })
             print(" - %s: %s" % (iname, out_pages[page_id]))
 
@@ -280,11 +289,25 @@ else:
 
     docpath = docset_dir + '/Contents/Resources/Documents'
 
+    inst_map = {}
+    for inst in all_insts:
+        inst_name = inst['name']
+        if inst_name in inst_map:
+            inst['dupe'] = True
+            inst_map[inst_name][0]['dupe'] = True
+        else:
+            inst_map[inst_name] = [inst]
+
     for inst in all_insts:
         out_page = out_pages[inst['page_id']]
 
+        inst_name = inst['name']
+
+        if True or inst['dupe']:
+            inst_name += " — " + inst['description']
+
         cur.execute(R'INSERT OR IGNORE INTO searchIndex(name, type, path) VALUES (?,?,?)', 
-            (inst['name'], 'Instruction', "P-" + out_page['name'] + ".html"))
+            (inst_name, 'Instruction', "P-" + out_page['name'] + ".html"))
 
     db.commit()
     db.close()
